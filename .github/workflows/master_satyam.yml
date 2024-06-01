@@ -1,11 +1,7 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy React App
-
-permissions:
-  id-token: write
-  contents: read
+name: Build and deploy Node.js app to Azure Web App - satyam
 
 on:
   push:
@@ -13,82 +9,63 @@ on:
       - master
   workflow_dispatch:
 
-env:
-  STORAGE_ACCOUNT_NAME: ${{ vars.STORAGE_ACCOUNT_NAME }}
-
 jobs:
   build:
-    name: Build
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js version
+        uses: actions/setup-node@v3
         with:
-          fetch-depth: 0
-      - name: Use Node 18.x
-        uses: actions/setup-node@v1
+          node-version: '18.x'
+
+      - name: npm install, build, and test
+        run: |
+          npm install
+          npm run build --if-present
+          npm run test --if-present
+
+      - name: Zip artifact for deployment
+        run: zip release.zip ./* -r
+
+      - name: Upload artifact for deployment job
+        uses: actions/upload-artifact@v3
         with:
-          node-version: "18.x"
-      - name: Install dependencies
-        run: npm install
-      - name: Build
-        run: npm run build
-      - name: Archive build
-        if: success()
-        uses: actions/upload-artifact@v1
-        with:
-          name: deploy_dist
-          path: build
-          
-  deployment-staging:
-    name: Deploy to Staging
+          name: node-app
+          path: release.zip
+
+  deploy:
     runs-on: ubuntu-latest
     needs: build
-    environment: staging
+    environment:
+      name: 'Production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    permissions:
+      id-token: write #This is required for requesting the JWT
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v1
-      - uses: azure/login@v1
+      - name: Download artifact from build job
+        uses: actions/download-artifact@v3
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_AAE43FE756BE453D991F0D22BA6ADA1A }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_4A4C153B24254689AF96EECFC6539594 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_D046BDC967324F7B9D3F47A0E4B91EA6 }} 
-      - name: Download build
-        uses: actions/download-artifact@v1
+          name: node-app
+
+      - name: Unzip artifact for deployment
+        run: unzip release.zip
+      
+      - name: Login to Azure
+        uses: azure/login@v1
         with:
-          name: deploy_dist
-      - name: Upload to blob storage
-        uses: azure/CLI@v1
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_D13939FB6BA6423985DFEBD04C2B1DC2 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_50A3A50E20304250B2C5180927B0CCFA }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8F1B11BD4F8943129A8B78DD7483ACB2 }}
+
+      - name: 'Deploy to Azure Web App'
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v2
         with:
-          inlineScript: |
-            az storage blob upload-batch --account-name $STORAGE_ACCOUNT_NAME --auth-mode key -d '$web' -s ./deploy_dist --overwrite
-      - name: logout
-        run: |
-          az logout
-        if: always()
-  deployment-production:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: deployment-staging
-    environment: production
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v1
-      - uses: azure/login@v1
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_AAE43FE756BE453D991F0D22BA6ADA1A}}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_4A4C153B24254689AF96EECFC6539594 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_D046BDC967324F7B9D3F47A0E4B91EA6 }} 
-      - name: Download build
-        uses: actions/download-artifact@v1
-        with:
-          name: deploy_dist
-      - name: Upload to blob storage
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az storage blob upload-batch --account-name $STORAGE_ACCOUNT_NAME --auth-mode key -d '$web' -s ./deploy_dist --overwrite
-      - name: logout
-        run: |
-          az logout
-        if: always()
+          app-name: 'satyam'
+          slot-name: 'Production'
+          package: .
+          
