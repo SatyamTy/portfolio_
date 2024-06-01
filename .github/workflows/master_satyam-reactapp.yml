@@ -34,7 +34,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: node-app
-          path: build/
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -47,16 +47,25 @@ jobs:
 
     steps:
       - name: Download artifact from build job
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: node-app
+
+      - name: Unzip artifact for deployment
+        run: unzip release.zip
+      
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_AAE43FE756BE453D991F0D22BA6ADA1A }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_4A4C153B24254689AF96EECFC6539594 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_D046BDC967324F7B9D3F47A0E4B91EA6 }}
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'React11Oct'
+          app-name: 'satyam-reactapp'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_E194E92742C24133961AB59ECD48DA31 }}
           package: .
           
