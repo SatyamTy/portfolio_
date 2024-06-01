@@ -47,25 +47,16 @@ jobs:
 
     steps:
       - name: Download artifact from build job
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v2
         with:
           name: node-app
-
-      - name: Unzip artifact for deployment
-        run: unzip release.zip
-      
-      - name: Login to Azure
-        uses: azure/login@v1
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_D8C0EB071C4C42CF836690E546F19E4B }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_4D84F4792AB040EA88B6EF54D1952DD1 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8430512E15734F459592C52DB513270C }}
 
       - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'satyam-reactapp'
+          app-name: 'React11Oct'
           slot-name: 'Production'
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_E194E92742C24133961AB59ECD48DA31 }}
           package: .
           
